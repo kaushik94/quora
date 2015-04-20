@@ -60,7 +60,7 @@ def check(expected, output):
         min_score += question_min_score
 
     normalized_score = max(0.0, (score - min_score) / (max_score - min_score))
-
+    normalized_score2 = ((score - min_score)*100.0)/max_score
     print >> sys.stderr, 'Min score:', min_score
     print >> sys.stderr, 'Max score:', max_score
     print >> sys.stderr, 'Your raw score:', score

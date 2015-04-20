@@ -24,7 +24,7 @@ for i in xrange(train_n):
 	topics = fp_in.readline()
 	question = fp_in.readline()
 	r = random.random()
-	if r > P:
+	if r < P:
 		trainingdata.append(topics+question)
 	else:
 		actuals.append(topics)

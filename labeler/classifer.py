@@ -1,7 +1,18 @@
 import operator
 
-stopwords = ['a','able','about','across','after','all','almost','also','am','among',
-             'an','and','any','are','as','at','be','because','been','but','by','can',
+stopwords = ['a',
+# 'able',
+'about',
+'across',
+'after',
+'all',
+'almost',
+'also',
+'am',
+'among',
+'an',
+'and',
+'any','are','as','at','be','because','been','but','by','can',
              'cannot','could','dear','did','do','does','either','else','ever','every',
              'for','from','get','got','had','has','have','he','her','hers','him','his',
              'how','however','i','if','in','into','is','it','its','just','least','let',
@@ -11,6 +22,7 @@ stopwords = ['a','able','about','across','after','all','almost','also','am','amo
              'them','then','there','these','they','this','tis','to','too','twas','us',
              'wants','was','we','were','what','when','where','which','while','who',
              'whom','why','will','with','would','yet','you','your']
+
 TOP_TOPICS = [
     183,
     29,
@@ -81,6 +93,7 @@ def get_blank_votes():
 class BaseClassifier():
 	def __init__(self):
 		self.trainingdata, self.testdata = load_data()
+		# self.trainingdata = map(lambda x: str_stop())
 	def fit(self):
 		raise NotImplementedError('No bro !')
 	def transform(self):
@@ -90,12 +103,6 @@ class BaseClassifier():
 			print ' '.join(str(i) for i in TOP_TOPICS)
 
 class KnnClassifier(BaseClassifier):
-	def fit(self):
-		# print self.trainingdata
-		raise NotImplementedError('No bro !')
-	def transform(self):
-		# print self.testdata
-		raise NotImplementedError('No bro !')
 	def fit_transform(self):
 		for index, each in enumerate(self.testdata):
 			results = []
@@ -127,6 +134,65 @@ class KnnClassifier(BaseClassifier):
 	def normalize(self):
 		pass
 
+def clean(data):
+	cleaned = []
+	for tags, query in data:
+		cleaned.append([tags, list_stop(query)])
+	return cleaned
 
-BC = KnnClassifier()
-BC.fit_transform()
+def clean2(data):
+	cleaned = []
+	for query in data:
+		cleaned.append(list_stop(query))
+	return cleaned
+
+# entries = {}
+# occ = {}
+
+def get_best(voting):
+	results = []
+	toppers = sorted(voting.iteritems(), key=operator.itemgetter(1), reverse=True)[:MAX_TOPICS]
+	results = []
+	for one, two in toppers:
+		results.append(one)
+	return results
+
+class TFIDF_Classifier(BaseClassifier):
+	def fit(self):
+		self.trainingdata = clean(self.trainingdata)
+		self.occ = {}
+		self.entries = {}
+		for tags, each in self.trainingdata:
+			for word in each:
+				if word in self.entries:
+					self.entries[word] += 1
+				else:
+					self.entries[word] = 1
+				for tag in tags:
+					if tag in self.occ:
+						if word in self.occ[tag]:
+							self.occ[tag][word] += 1
+						else:
+							self.occ[tag][word] = 1
+					else:
+						self.occ[tag] = {}
+						self.occ[tag][word] = 1
+	def _get_voting(self, query):
+		voting = dict(zip(range(1, 251), [0]*250))
+		for i in xrange(1, 251):
+			if i in self.occ:
+				for each in query:
+					if each in self.occ[i]:
+						voting[i] += self.occ[i][each]
+		return voting 
+					
+	def transform(self):
+		self.testdata = clean2(self.testdata)
+		for each in self.testdata:
+			voting = self._get_voting(each)
+			best = get_best(voting)
+			print ' '.join(str(i) for i in best)
+
+BC = TFIDF_Classifier()
+BC.fit()
+BC.transform()
