@@ -146,8 +146,6 @@ def clean2(data):
 		cleaned.append(list_stop(query))
 	return cleaned
 
-# entries = {}
-# occ = {}
 
 def get_best(voting):
 	results = []
@@ -157,7 +155,7 @@ def get_best(voting):
 		results.append(one)
 	return results
 
-class TFIDF_Classifier(BaseClassifier):
+class TFIDF_KNN_Classifier(BaseClassifier):
 	def fit(self):
 		self.trainingdata = clean(self.trainingdata)
 		self.occ = {}
@@ -177,6 +175,10 @@ class TFIDF_Classifier(BaseClassifier):
 					else:
 						self.occ[tag] = {}
 						self.occ[tag][word] = 1
+		for each_tag in self.occ:
+			for each_word in self.occ[each_tag]:
+				self.occ[each_tag][each_word] /= self.entries[each_word]*1.0
+				
 	def _get_voting(self, query):
 		voting = dict(zip(range(1, 251), [0]*250))
 		for i in xrange(1, 251):
@@ -193,6 +195,8 @@ class TFIDF_Classifier(BaseClassifier):
 			best = get_best(voting)
 			print ' '.join(str(i) for i in best)
 
-BC = TFIDF_Classifier()
+
+
+BC = TFIDF_KNN_Classifier()
 BC.fit()
 BC.transform()
