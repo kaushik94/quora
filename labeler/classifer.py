@@ -148,10 +148,11 @@ def clean2(data):
 
 
 def get_best(voting):
-	results = []
 	toppers = sorted(voting.iteritems(), key=operator.itemgetter(1), reverse=True)[:MAX_TOPICS]
 	results = []
 	for one, two in toppers:
+		if two is 0:
+			break
 		results.append(one)
 	return results
 
@@ -160,6 +161,7 @@ class TFIDF_KNN_Classifier(BaseClassifier):
 		self.trainingdata = clean(self.trainingdata)
 		self.occ = {}
 		self.entries = {}
+		self.occ_tag = {}
 		for tags, each in self.trainingdata:
 			for word in each:
 				if word in self.entries:
@@ -175,6 +177,16 @@ class TFIDF_KNN_Classifier(BaseClassifier):
 					else:
 						self.occ[tag] = {}
 						self.occ[tag][word] = 1
+					for other in tags:
+						if other is not tag:
+							if tag in self.occ_tag:
+								if other in self.occ_tag[tag]:
+									self.occ_tag[tag][other] += 1
+								else:
+									self.occ_tag[tag][other] = 1
+							else:
+								self.occ_tag[tag] = {}
+								self.occ_tag[tag][other] = 1
 		for each_tag in self.occ:
 			for each_word in self.occ[each_tag]:
 				self.occ[each_tag][each_word] /= self.entries[each_word]*1.0
@@ -187,12 +199,24 @@ class TFIDF_KNN_Classifier(BaseClassifier):
 					if each in self.occ[i]:
 						voting[i] += self.occ[i][each]
 		return voting 
-					
+
+	def _fill(self, best):
+		score = dict(zip(range(1, 251), [0]*250))
+		remaining = MAX_TOPICS - len(best)
+		for each in best:
+			for tag in self.occ_tag:
+				if each is not tag:
+					if each in self.occ_tag[tag]:
+						score[each] += self.occ_tag[tag][each]
+		best.append(get_best(score)[:remaining])
+		return best
+
 	def transform(self):
 		self.testdata = clean2(self.testdata)
 		for each in self.testdata:
 			voting = self._get_voting(each)
 			best = get_best(voting)
+			best = self._fill(best)
 			print ' '.join(str(i) for i in best)
 
 

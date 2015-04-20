@@ -1,1 +1,1 @@
-$ python labeler_checker.py labeler_sample.in your-output-file-name
+$ python labeler_checker.py labeler_sample.ans your-output-file-name
