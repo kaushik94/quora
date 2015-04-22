@@ -1,23 +1,13 @@
 import operator
 
-stopwords = ['a',
-# 'able',
-'about',
-'across',
-'after',
-'all',
-'almost',
-'also',
-'am',
-'among',
-'an',
-'and',
-'any','are','as','at','be','because','been','but','by','can',
+
+stopwords = ['a', 'able', 'about', 'across', 'after', 'all', 'almost', 'also', 'am', 'among',
+	     'an','and','any','are','as','at','be','because','been','but','by','can',
              'cannot','could','dear','did','do','does','either','else','ever','every',
              'for','from','get','got','had','has','have','he','her','hers','him','his',
              'how','however','i','if','in','into','is','it','its','just','least','let',
              'like','likely','may','me','might','most','must','my','neither','no','nor',
-           'not','of','off','often','on','only','or','other','our','own','rather','said',
+             'not','of','off','often','on','only','or','other','our','own','rather','said',
              'say','says','she','should','since','so','some','than','that','the','their',
              'them','then','there','these','they','this','tis','to','too','twas','us',
              'wants','was','we','were','what','when','where','which','while','who',
@@ -72,10 +62,13 @@ def load_data():
 		test.append(query)
 	return train, test
 
+stripper = [',', '?', '\n', '.', '!']
 def bow(line):
 	hashmap = {}
 	words = list_stop(line)
 	for word in words:
+		for each in stripper:
+			word = word.strip(each)
 		if word in hashmap:
 			hashmap[word] += 1
 		else:
@@ -102,6 +95,7 @@ class BaseClassifier():
 		for each in self.testdata:
 			print ' '.join(str(i) for i in TOP_TOPICS)
 
+K = 10
 class KnnClassifier(BaseClassifier):
 	def fit_transform(self):
 		for index, each in enumerate(self.testdata):
@@ -147,12 +141,10 @@ def clean2(data):
 	return cleaned
 
 
-def get_best(voting):
-	toppers = sorted(voting.iteritems(), key=operator.itemgetter(1), reverse=True)[:MAX_TOPICS]
+def get_best(voting, k):
+	toppers = sorted(voting.iteritems(), key=operator.itemgetter(1), reverse=True)[:k]
 	results = []
 	for one, two in toppers:
-		if two is 0:
-			break
 		results.append(one)
 	return results
 
@@ -162,6 +154,7 @@ class TFIDF_KNN_Classifier(BaseClassifier):
 		self.occ = {}
 		self.entries = {}
 		self.occ_tag = {}
+		self.entries_tag = {}
 		for tags, each in self.trainingdata:
 			for word in each:
 				if word in self.entries:
@@ -169,6 +162,10 @@ class TFIDF_KNN_Classifier(BaseClassifier):
 				else:
 					self.entries[word] = 1
 				for tag in tags:
+					if tag in self.entries_tag:
+						self.entries_tag[tag] += 1
+					else:
+						self.entries_tag[tag] = 1
 					if tag in self.occ:
 						if word in self.occ[tag]:
 							self.occ[tag][word] += 1
@@ -190,7 +187,10 @@ class TFIDF_KNN_Classifier(BaseClassifier):
 		for each_tag in self.occ:
 			for each_word in self.occ[each_tag]:
 				self.occ[each_tag][each_word] /= self.entries[each_word]*1.0
-				
+		for each_tag in self.occ_tag:
+			for each_other in self.occ_tag:
+				if each_other is not each_tag and each_other in self.occ_tag[each_tag]:
+					self.occ_tag[each_tag][each_other] /= self.entries_tag[each_tag]*1.0
 	def _get_voting(self, query):
 		voting = dict(zip(range(1, 251), [0]*250))
 		for i in xrange(1, 251):
@@ -200,24 +200,40 @@ class TFIDF_KNN_Classifier(BaseClassifier):
 						voting[i] += self.occ[i][each]
 		return voting 
 
-	def _fill(self, best):
+	def _fill(self, best, graph_votes):
 		score = dict(zip(range(1, 251), [0]*250))
 		remaining = MAX_TOPICS - len(best)
-		for each in best:
+		"""for each in best:
 			for tag in self.occ_tag:
 				if each is not tag:
 					if each in self.occ_tag[tag]:
 						score[each] += self.occ_tag[tag][each]
-		best.append(get_best(score)[:remaining])
+		"""
+		best.extend(get_best(graph_votes, remaining))
+		# print best, remaining
 		return best
+
+	def _get_best2(self, best):
+		voting = {}
+		for tag in best:
+			if tag in self.occ_tag:
+				for other in self.occ_tag:
+					if other in voting and other != tag:
+						voting[other] += 1
+					else:
+						voting[other] = 1
+		return voting
 
 	def transform(self):
 		self.testdata = clean2(self.testdata)
 		for each in self.testdata:
 			voting = self._get_voting(each)
-			best = get_best(voting)
-			best = self._fill(best)
+			best = get_best(voting, K)
+			graph_votes = self._get_best2(best)
+			best = self._fill(best, graph_votes)
 			print ' '.join(str(i) for i in best)
+			# print self.occ
+			# print self.occ_tag
 
 
 
